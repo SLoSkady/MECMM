@@ -13,6 +13,7 @@ Addresses are for the Steam build installed in October 2026; a game update may c
 | Proxy DLL | `dinput8.dll` is loaded from the game folder (not a KnownDLL) |
 | Debugger | Cheat Engine **VEH debugger** works without crashing the game |
 | Online | EA servers shut down in Dec 2023: start the game with the internet disconnected to avoid the infinite loading screen after the intro |
+| Saves | `Documents\Mirrors Edge Catalyst\settings\PROF_SAVE*` (shared by all versions of the game). A completed save downloaded from the internet (made by another player in 2016) was **not accepted**: the game started from the prologue and overwrote it. To test in the open world, play through the prologue. |
 
 ## Coordinate system
 
