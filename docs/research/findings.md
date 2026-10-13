@@ -34,10 +34,10 @@ Addresses are for the Steam build installed in October 2026; a game update may c
   heading as `yaw = atan2(forward.x, forward.z)`. The sign/zero direction of yaw is not yet
   verified visually.
 - `exe + 0x2577238` holds the same pointer.
-- Verified across a game restart in the tutorial area.
+- Verified across game restarts, in the tutorial area **and in the open world**.
 - The pointed-to object looks like an array of 0x40-byte transforms (the player's is the
-  matrix at `+0x700`, other entities follow), so the index may differ in other levels or
-  the open world. **Not yet verified in the open world.**
+  matrix at `+0x700`, other entities follow). The index was the same in both places tested;
+  other story missions are not tested yet.
 
 ## Camera (render view)
 
@@ -48,7 +48,8 @@ Addresses are for the Steam build installed in October 2026; a game update may c
     +0x6F0  projection matrix  reversed-Z infinite perspective
 ```
 
-- Verified across a game restart (markers drawn with it line up with the world).
+- Verified across game restarts, in the tutorial and in the open world (markers drawn with it
+  line up with the world).
 - `clip = (x, y, z, 1) * view * projection`; the camera looks down **-Z** in view space,
   so the transform's third row points *backwards* (opposite to the view direction).
 - Projection at 1024x768: `[0][0] = 0.9757`, `[1][1] = 1.3009` → vertical FOV 75°, aspect 4:3;
@@ -83,4 +84,5 @@ Addresses are for the Steam build installed in October 2026; a game update may c
 - `screenshots/ce1.png` — Cheat Engine out-of-memory on "Unknown initial value".
 - `screenshots/ce3.png` — writers to a stack address (dead end).
 - `screenshots/ce4.png` — `memcpy` copying the player transform (source = original).
-- `screenshots/ghost1.png` — the test bot drawn as a marker in the world.
+- `screenshots/ghost1.png` — the test bot drawn as a marker in the world (tutorial).
+- `screenshots/ghost2.png` — the same in the open world, on a rooftop.

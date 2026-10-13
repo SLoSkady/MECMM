@@ -140,7 +140,7 @@ All tools read the running game's memory and need no extra installs.
 - [x] Locate the player's position (restart-stable pointer path)
 - [x] `dinput8.dll` proxy loader
 - [x] ImGui overlay with live coordinates
-- [ ] Verify the pointer path in the open world
+- [x] Verify the pointer paths in the open world
 - [x] Player heading and the render camera (view + projection matrices)
 - [x] UDP relay server + client (30 state updates per second)
 - [x] Test bot that simulates a remote player
