@@ -7,8 +7,8 @@ The goal: see other runners in your game in real time — race them, free-run to
 
 > [!WARNING]
 > Early development. Players can connect to a relay server and see each other in the world as
-> **on-screen markers** (a frame with the name and distance). There are no 3D character models yet,
-> and markers are visible through walls.
+> **simple 3D figures** with name and distance, correctly hidden behind walls (shown as a faint
+> silhouette). The real game character model is not used yet.
 > See [Roadmap](#roadmap).
 
 ## Status
@@ -20,7 +20,8 @@ The goal: see other runners in your game in real time — race them, free-run to
 | In-game overlay (ImGui) with live coordinates | ✅ Done |
 | Networking: relay server + client in the mod + test bot | ✅ Done |
 | Remote players drawn as markers ("ghosts") with smooth movement | ✅ Done |
-| Remote players as 3D characters with animations | 🔜 Planned |
+| Remote players as simple 3D figures, hidden behind walls (silhouette) | ✅ Done |
+| Remote players as the real game character with animations | 🔜 Planned |
 | Game modes: races, co-op free-run, tag | 🔜 Planned |
 
 ## Requirements
@@ -103,7 +104,8 @@ MECMM/
 │   ├── core/               entry point, dinput8 proxy, config (mecmm.ini), network session, logging
 │   ├── game/               access to game data (player position and heading)
 │   ├── net/                wire protocol + UDP client (shared with server and bot)
-│   └── overlay/            D3D11 Present hook + ImGui UI
+│   ├── overlay/            D3D11 Present hook + ImGui UI
+│   └── render/             scene depth discovery, 3D figures of remote players
 ├── server/                 standalone programs
 │   ├── relay/              mecmm-server.exe — relay server
 │   └── bot/                mecmm-bot.exe — test bot that circles around a player
@@ -133,6 +135,7 @@ All tools read the running game's memory and need no extra installs.
 | `tools/memory/ptrfind.ps1` | Find pointers to an object; marks static ones inside the `.exe` |
 | `tools/memory/ptrchain.ps1` | Multi-level pointer search back to static `.exe` locations (like CE's pointer scan) |
 | `tools/memory/matscan.ps1` | Find 4x4 transform matrices near a point and filter them by rotation |
+| In game: **F8** or **Home** | Debug window with the depth buffers the game uses (PgUp/PgDn to browse) |
 | `tools/disasm/disasm.ps1` | Disassemble live game code around an address |
 
 ## Roadmap
@@ -147,7 +150,8 @@ All tools read the running game's memory and need no extra installs.
 - [x] Interpolation of remote players (smooth movement)
 - [x] Remote players drawn as on-screen markers
 - [ ] Check markers at other resolutions / aspect ratios (16:9)
-- [ ] Remote players as in-world characters, then animations
+- [x] Remote players as simple 3D figures occluded by the scene (game's depth buffer)
+- [ ] Remote players as the real game character, then animations
 - [ ] Game modes: races on time-trial routes, co-op free-run, tag
 - [ ] Auto-fix for the endless loading screen (offline mode)
 

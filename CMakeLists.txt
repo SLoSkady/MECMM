@@ -45,9 +45,11 @@ add_library(mecmm SHARED
     src/core/dinput8.def
     src/game/game.cpp
     src/overlay/overlay.cpp
+    src/render/depth.cpp
+    src/render/ghosts.cpp
 )
 set_target_properties(mecmm PROPERTIES OUTPUT_NAME dinput8)
-target_link_libraries(mecmm PRIVATE mecmm_net imgui minhook d3d11 dxgi)
+target_link_libraries(mecmm PRIVATE mecmm_net imgui minhook d3d11 dxgi d3dcompiler)
 
 # Relay server and test bot (console programs).
 add_executable(mecmm-server server/relay/main.cpp)

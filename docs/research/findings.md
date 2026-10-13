@@ -59,6 +59,26 @@ Addresses are for the Steam build installed in October 2026; a game update may c
 - Found with `tools/memory/matscan.ps1` (transform matrices near the head, filtered by turning
   the camera) and `tools/memory/ptrchain.ps1` (multi-level pointer search).
 
+## Scene depth buffer
+
+Found by hooking `ID3D11DeviceContext::OMSetRenderTargets` (vtable 33) and
+`ClearDepthStencilView` (vtable 53) and counting depth-stencil views per frame
+(`src/render/depth.cpp`, debug window on F8/Home).
+
+| Buffer (1024x768 output, render quality 50 %) | Format | Cleared to | Meaning |
+|---|---|---|---|
+| 512x384 (= render resolution) | `R32G8X24_TYPELESS` | 0 | **main scene depth**, reversed-Z, ~50 binds/frame |
+| 256x192 | `R32G8X24_TYPELESS` | 0 | downsampled copy (effects) |
+| 700x700 | `R16_TYPELESS` | 0 | shadows |
+| 1024x768 (= output resolution) | `R32G8X24_TYPELESS` | 1 (or not cleared) | UI/post; empty at Present |
+
+- The scene depth is rendered at **render resolution**, not output resolution, so pick it by
+  aspect ratio + "cleared to 0" rather than by size.
+- All have `BIND_SHADER_RESOURCE`; read them through an SRV with `R32_FLOAT_X8X24_TYPELESS`.
+- The scene depth is still intact at `Present`, so the mod samples it there to occlude the
+  3D figures (`depth = 0.06 / view distance`, larger = closer).
+- `screenshots/depth3.png` shows the picked buffer in the debug window.
+
 ## Dead ends (so nobody repeats them)
 
 - Searching the "height" with Cheat Engine finds values around 35.4 that react to climbing.
@@ -86,3 +106,4 @@ Addresses are for the Steam build installed in October 2026; a game update may c
 - `screenshots/ce4.png` — `memcpy` copying the player transform (source = original).
 - `screenshots/ghost1.png` — the test bot drawn as a marker in the world (tutorial).
 - `screenshots/ghost2.png` — the same in the open world, on a rooftop.
+- `screenshots/ghost3.png` — 3D figure behind a box: hidden part drawn as a faint silhouette.
