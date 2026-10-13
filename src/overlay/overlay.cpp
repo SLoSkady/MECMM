@@ -9,7 +9,9 @@
 #include <imgui_impl_dx11.h>
 #include <imgui_impl_win32.h>
 
+#include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <string>
 
 #include "core/log.h"
@@ -91,6 +93,59 @@ void DrawNetwork(const Vec3* me) {
     }
 }
 
+// Draws every remote player where they are in the world: a body-sized frame with the
+// name above and the distance below.
+void DrawGhosts() {
+    Camera camera;
+    if (!GetCamera(camera)) return;
+
+    constexpr float kBodyHeight = 1.75f;  // metres
+    const ImU32 kFrame = IM_COL32(80, 220, 255, 230);
+    const ImU32 kFill = IM_COL32(80, 220, 255, 40);
+    const ImU32 kText = IM_COL32(255, 255, 255, 255);
+    const ImU32 kShadow = IM_COL32(0, 0, 0, 200);
+
+    ImDrawList* draw = ImGui::GetBackgroundDrawList();
+    ImVec2 screen = ImGui::GetIO().DisplaySize;
+    uint64_t drawTime = net::NowMs() - net::kInterpolationDelayMs;
+
+    Vec3 me;
+    bool haveMe = GetPlayerPosition(me);
+
+    for (const auto& player : Session().Players()) {
+        float p[3], yaw;
+        player.Sample(drawTime, p, yaw);
+        Vec3 feet{p[0], p[1], p[2]};
+        Vec3 head{p[0], p[1] + kBodyHeight, p[2]};
+
+        float fx, fy, hx, hy;
+        if (!WorldToScreen(camera, feet, screen.x, screen.y, fx, fy) ||
+            !WorldToScreen(camera, head, screen.x, screen.y, hx, hy))
+            continue;
+
+        float height = std::max(fy - hy, 6.0f);
+        float halfWidth = height * 0.2f;
+        float cx = (fx + hx) * 0.5f;
+        ImVec2 topLeft(cx - halfWidth, hy), bottomRight(cx + halfWidth, hy + height);
+        draw->AddRectFilled(topLeft, bottomRight, kFill, halfWidth * 0.5f);
+        draw->AddRect(topLeft, bottomRight, kFrame, halfWidth * 0.5f, 0, 2.0f);
+
+        auto label = [&](const char* text, float y) {
+            ImVec2 size = ImGui::CalcTextSize(text);
+            ImVec2 at(cx - size.x * 0.5f, y);
+            draw->AddText(ImVec2(at.x + 1, at.y + 1), kShadow, text);
+            draw->AddText(at, kText, text);
+        };
+        label(player.name.c_str(), hy - ImGui::GetTextLineHeight() - 2);
+        if (haveMe) {
+            float dx = p[0] - me.x, dy = p[1] - me.y, dz = p[2] - me.z;
+            char distance[32];
+            snprintf(distance, sizeof(distance), "%.0f m", std::sqrt(dx * dx + dy * dy + dz * dz));
+            label(distance, bottomRight.y + 2);
+        }
+    }
+}
+
 void DrawOverlay() {
     ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_FirstUseEver);
     ImGui::Begin("MECMM", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing);
@@ -116,13 +171,14 @@ HRESULT STDMETHODCALLTYPE HookedPresent(IDXGISwapChain* swapChain, UINT syncInte
 
     if (GetAsyncKeyState(VK_INSERT) & 1) g_visible = !g_visible;
 
-    if (g_imguiReady && g_visible) {
+    if (g_imguiReady) {
         if (!g_rtv) CreateRenderTarget(swapChain);
 
         ImGui_ImplDX11_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
-        DrawOverlay();
+        DrawGhosts();  // always: they are part of the game, not of the info window
+        if (g_visible) DrawOverlay();
         ImGui::Render();
 
         g_context->OMSetRenderTargets(1, &g_rtv, nullptr);

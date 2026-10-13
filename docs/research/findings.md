@@ -38,6 +38,25 @@ Addresses are for the Steam build installed in October 2026; a game update may c
   matrix at `+0x700`, other entities follow), so the index may differ in other levels or
   the open world. **Not yet verified in the open world.**
 
+## Camera (render view)
+
+```
+[MirrorsEdgeCatalyst.exe + 0x2563A10] -> render view object of the main camera
+    +0x630  view matrix        (world -> view), 4x4 float, row-vector convention
+    +0x6B0  camera transform   (rows right, up, back, position) = inverse of the view matrix
+    +0x6F0  projection matrix  reversed-Z infinite perspective
+```
+
+- Verified across a game restart (markers drawn with it line up with the world).
+- `clip = (x, y, z, 1) * view * projection`; the camera looks down **-Z** in view space,
+  so the transform's third row points *backwards* (opposite to the view direction).
+- Projection at 1024x768: `[0][0] = 0.9757`, `[1][1] = 1.3009` → vertical FOV 75°, aspect 4:3;
+  `[2][3] = -1`, `[3][2] = 0.06` (near plane 0.06 m, no far plane).
+- The same object holds more matrices (another view/projection copy at `+0x730`/`+0x770`,
+  a combined matrix around `+0x7F0`), not needed so far.
+- Found with `tools/memory/matscan.ps1` (transform matrices near the head, filtered by turning
+  the camera) and `tools/memory/ptrchain.ps1` (multi-level pointer search).
+
 ## Dead ends (so nobody repeats them)
 
 - Searching the "height" with Cheat Engine finds values around 35.4 that react to climbing.
@@ -63,3 +82,4 @@ Addresses are for the Steam build installed in October 2026; a game update may c
 - `screenshots/ce1.png` — Cheat Engine out-of-memory on "Unknown initial value".
 - `screenshots/ce3.png` — writers to a stack address (dead end).
 - `screenshots/ce4.png` — `memcpy` copying the player transform (source = original).
+- `screenshots/ghost1.png` — the test bot drawn as a marker in the world.

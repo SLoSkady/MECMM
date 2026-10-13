@@ -6,8 +6,9 @@ An unofficial, work-in-progress multiplayer mod for **Mirror's Edge Catalyst** (
 The goal: see other runners in your game in real time — race them, free-run together, play tag.
 
 > [!WARNING]
-> Early development. Players can already connect to a relay server and see each other in the
-> overlay **as a list with distances** — remote players are not drawn in the world yet.
+> Early development. Players can connect to a relay server and see each other in the world as
+> **on-screen markers** (a frame with the name and distance). There are no 3D character models yet,
+> and markers are visible through walls.
 > See [Roadmap](#roadmap).
 
 ## Status
@@ -18,7 +19,7 @@ The goal: see other runners in your game in real time — race them, free-run to
 | Mod DLL loads into the game (`dinput8.dll` proxy) | ✅ Done |
 | In-game overlay (ImGui) with live coordinates | ✅ Done |
 | Networking: relay server + client in the mod + test bot | ✅ Done |
-| Remote players drawn as markers ("ghosts") | ⏳ Next |
+| Remote players drawn as markers ("ghosts") with smooth movement | ✅ Done |
 | Remote players as 3D characters with animations | 🔜 Planned |
 | Game modes: races, co-op free-run, tag | 🔜 Planned |
 
@@ -90,6 +91,9 @@ The bot joins as a second player and runs in circles 5 m around you.
 4. A network thread sends the player's position and heading to the relay server 30 times per
    second over UDP. The server forwards every player's state to all others and drops players
    that are silent for 5 seconds. The wire format is in [src/net/protocol.h](src/net/protocol.h).
+5. Remote players are drawn 100 ms in the past, interpolated between received states, and
+   projected to the screen with the game's own camera matrices
+   (`[MirrorsEdgeCatalyst.exe + 0x2563A10]`: view `+0x630`, projection `+0x6F0`).
 
 ## Project structure
 
@@ -127,6 +131,8 @@ All tools read the running game's memory and need no extra installs.
 | `tools/memory/posscan.ps1` | Find x,y,z float triples and filter them by movement |
 | `tools/memory/memwatch.ps1` | Record values to CSV while the game window is focused |
 | `tools/memory/ptrfind.ps1` | Find pointers to an object; marks static ones inside the `.exe` |
+| `tools/memory/ptrchain.ps1` | Multi-level pointer search back to static `.exe` locations (like CE's pointer scan) |
+| `tools/memory/matscan.ps1` | Find 4x4 transform matrices near a point and filter them by rotation |
 | `tools/disasm/disasm.ps1` | Disassemble live game code around an address |
 
 ## Roadmap
@@ -135,11 +141,12 @@ All tools read the running game's memory and need no extra installs.
 - [x] `dinput8.dll` proxy loader
 - [x] ImGui overlay with live coordinates
 - [ ] Verify the pointer path in the open world
-- [ ] Player rotation and camera (view matrix) for drawing remote players
+- [x] Player heading and the render camera (view + projection matrices)
 - [x] UDP relay server + client (30 state updates per second)
 - [x] Test bot that simulates a remote player
-- [ ] Interpolation of remote players (smooth movement)
-- [ ] Remote players drawn as on-screen markers
+- [x] Interpolation of remote players (smooth movement)
+- [x] Remote players drawn as on-screen markers
+- [ ] Check markers at other resolutions / aspect ratios (16:9)
 - [ ] Remote players as in-world characters, then animations
 - [ ] Game modes: races on time-trial routes, co-op free-run, tag
 - [ ] Auto-fix for the endless loading screen (offline mode)

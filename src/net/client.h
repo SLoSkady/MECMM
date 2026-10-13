@@ -5,6 +5,7 @@
 #include <winsock2.h>
 
 #include <cstdint>
+#include <deque>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -16,13 +17,30 @@ struct LocalState {
     float yaw;
 };
 
+// Milliseconds on a steady high-resolution clock (GetTickCount64 is too coarse for interpolation).
+uint64_t NowMs();
+
+// Remote players are drawn this far in the past, so there are usually two received states
+// around the drawn moment to interpolate between (states arrive every ~33 ms).
+constexpr uint64_t kInterpolationDelayMs = 100;
+
+struct Snapshot {
+    uint64_t timeMs;  // NowMs() when it arrived
+    float pos[3];
+    float yaw;
+};
+
 struct RemotePlayer {
     uint32_t id = 0;
     std::string name;
-    float pos[3] = {};
+    float pos[3] = {};  // latest received
     float yaw = 0;
     uint32_t seq = 0;
-    uint64_t lastUpdateMs = 0;  // GetTickCount64() when the last state arrived
+    uint64_t lastUpdateMs = 0;      // NowMs() when the last state arrived
+    std::deque<Snapshot> history;   // recent states, oldest first
+
+    // Position and heading at `timeMs`, interpolated between received states.
+    void Sample(uint64_t timeMs, float outPos[3], float& outYaw) const;
 };
 
 enum class Status { Stopped, Connecting, Connected, Error };

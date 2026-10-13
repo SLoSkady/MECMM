@@ -14,6 +14,11 @@ constexpr uintptr_t kTransformOffset = 0x700;
 constexpr uintptr_t kForwardOffset = kTransformOffset + 0x20;
 constexpr uintptr_t kPositionOffset = kTransformOffset + 0x30;
 
+//   [MirrorsEdgeCatalyst.exe + 0x2563A10] -> render view of the main camera
+constexpr uintptr_t kRenderViewPtr = 0x2563A10;
+constexpr uintptr_t kViewMatrixOffset = 0x630;
+constexpr uintptr_t kProjectionOffset = 0x6F0;
+
 // Reads memory without crashing if the address is bad (e.g. during loading).
 bool SafeRead(uintptr_t addr, void* out, size_t size) {
     __try {
@@ -24,12 +29,17 @@ bool SafeRead(uintptr_t addr, void* out, size_t size) {
     }
 }
 
-bool ReadPlayerVec3(uintptr_t offset, Vec3& out) {
+// Follows [exe + staticOffset] and reads `size` bytes at `offset` in the pointed-to object.
+bool ReadThrough(uintptr_t staticOffset, uintptr_t offset, void* out, size_t size) {
     static const uintptr_t base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
 
     uintptr_t object = 0;
-    if (!SafeRead(base + kPlayerObjectPtr, &object, sizeof(object)) || object == 0) return false;
-    if (!SafeRead(object + offset, &out, sizeof(out))) return false;
+    if (!SafeRead(base + staticOffset, &object, sizeof(object)) || object == 0) return false;
+    return SafeRead(object + offset, out, size);
+}
+
+bool ReadPlayerVec3(uintptr_t offset, Vec3& out) {
+    if (!ReadThrough(kPlayerObjectPtr, offset, &out, sizeof(out))) return false;
     return std::isfinite(out.x) && std::isfinite(out.y) && std::isfinite(out.z);
 }
 
@@ -41,5 +51,27 @@ bool GetPlayerYaw(float& out) {
     Vec3 forward;
     if (!ReadPlayerVec3(kForwardOffset, forward)) return false;
     out = std::atan2(forward.x, forward.z);
+    return true;
+}
+
+bool GetCamera(Camera& out) {
+    if (!ReadThrough(kRenderViewPtr, kViewMatrixOffset, out.view, sizeof(out.view)) ||
+        !ReadThrough(kRenderViewPtr, kProjectionOffset, out.projection, sizeof(out.projection)))
+        return false;
+    // A perspective projection scales x and y; anything else means we read garbage.
+    return std::isfinite(out.projection[0][0]) && out.projection[0][0] > 0.01f && out.projection[1][1] > 0.01f;
+}
+
+bool WorldToScreen(const Camera& camera, const Vec3& world, float screenWidth, float screenHeight, float& x, float& y) {
+    const float p[4] = {world.x, world.y, world.z, 1.0f};
+    float v[4] = {}, clip[4] = {};
+    for (int c = 0; c < 4; ++c)
+        for (int r = 0; r < 4; ++r) v[c] += p[r] * camera.view[r][c];
+    for (int c = 0; c < 4; ++c)
+        for (int r = 0; r < 4; ++r) clip[c] += v[r] * camera.projection[r][c];
+
+    if (clip[3] < 0.05f) return false;  // behind the camera (or too close to it)
+    x = (clip[0] / clip[3] * 0.5f + 0.5f) * screenWidth;
+    y = (0.5f - clip[1] / clip[3] * 0.5f) * screenHeight;
     return true;
 }

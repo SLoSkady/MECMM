@@ -3,6 +3,7 @@
 #include <ws2tcpip.h>
 
 #include <algorithm>
+#include <chrono>
 
 #include "net/protocol.h"
 
@@ -12,8 +13,48 @@ namespace {
 
 constexpr uint64_t kHelloIntervalMs = 1000;    // while connecting
 constexpr uint64_t kRehelloIntervalMs = 3000;  // keep-alive while connected
+constexpr size_t kHistorySize = 16;            // ~0.5 s of states at 30 Hz
+
+constexpr float kPi = 3.14159265f;
+
+float LerpAngle(float a, float b, float t) {
+    float d = b - a;
+    while (d > kPi) d -= 2 * kPi;
+    while (d < -kPi) d += 2 * kPi;
+    return a + d * t;
+}
 
 }  // namespace
+
+uint64_t NowMs() {
+    using namespace std::chrono;
+    return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
+}
+
+void RemotePlayer::Sample(uint64_t timeMs, float outPos[3], float& outYaw) const {
+    if (history.empty()) {
+        std::copy(pos, pos + 3, outPos);
+        outYaw = yaw;
+        return;
+    }
+    // Before the oldest or after the newest state: hold that state (no guessing ahead).
+    const Snapshot* a = &history.front();
+    const Snapshot* b = &history.back();
+    if (timeMs <= a->timeMs) b = a;
+    else if (timeMs >= b->timeMs) a = b;
+    else {
+        for (size_t i = 1; i < history.size(); ++i) {
+            if (history[i].timeMs >= timeMs) {
+                a = &history[i - 1];
+                b = &history[i];
+                break;
+            }
+        }
+    }
+    float t = b->timeMs > a->timeMs ? static_cast<float>(timeMs - a->timeMs) / (b->timeMs - a->timeMs) : 0.0f;
+    for (int i = 0; i < 3; ++i) outPos[i] = a->pos[i] + (b->pos[i] - a->pos[i]) * t;
+    outYaw = LerpAngle(a->yaw, b->yaw, t);
+}
 
 Client::~Client() { Stop(); }
 
@@ -70,7 +111,7 @@ void Client::Send(const T& msg) {
 
 void Client::Update(const LocalState* local) {
     if (socket_ == INVALID_SOCKET) return;
-    uint64_t now = GetTickCount64();
+    uint64_t now = NowMs();
 
     Receive();
 
@@ -142,7 +183,9 @@ void Client::Receive() {
                 it->seq = msg.seq;
                 std::copy(msg.pos, msg.pos + 3, it->pos);
                 it->yaw = msg.yaw;
-                it->lastUpdateMs = GetTickCount64();
+                it->lastUpdateMs = NowMs();
+                it->history.push_back(Snapshot{it->lastUpdateMs, {msg.pos[0], msg.pos[1], msg.pos[2]}, msg.yaw});
+                if (it->history.size() > kHistorySize) it->history.pop_front();
                 break;
             }
             case MsgType::PlayerLeft: {
