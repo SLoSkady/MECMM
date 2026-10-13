@@ -1,0 +1,31 @@
+# Build output
+build/
+out/
+*.dll
+*.lib
+*.exp
+*.pdb
+*.obj
+*.ilk
+
+# Third-party tool binaries are the exception
+!tools/lib/*.dll
+
+# Editors / IDE
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Raw research data from tools/memory (large, session-specific: addresses change every game launch)
+tools/output/
+
+# Game files must never be committed (EA's property)
+*.exe
+*.cas
+*.cat
+*.toc
+*.sb
+
+# Logs
+*.log
