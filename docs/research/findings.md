@@ -29,6 +29,9 @@ Addresses are for the Steam build installed in October 2026; a game update may c
 [MirrorsEdgeCatalyst.exe + 0x23DA020] + 0x730  ->  float x, y, z   (character root)
 ```
 
+- The full root transform is at `+0x700` (forward row at `+0x720`); the mod derives the
+  heading as `yaw = atan2(forward.x, forward.z)`. The sign/zero direction of yaw is not yet
+  verified visually.
 - `exe + 0x2577238` holds the same pointer.
 - Verified across a game restart in the tutorial area.
 - The pointed-to object looks like an array of 0x40-byte transforms (the player's is the

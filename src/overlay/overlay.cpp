@@ -9,8 +9,12 @@
 #include <imgui_impl_dx11.h>
 #include <imgui_impl_win32.h>
 
-#include "game/game.h"
+#include <cmath>
+#include <string>
+
 #include "core/log.h"
+#include "core/session.h"
+#include "game/game.h"
 
 namespace {
 
@@ -52,18 +56,56 @@ bool InitImGui(IDXGISwapChain* swapChain) {
     return true;
 }
 
+void DrawNetwork(const Vec3* me) {
+    const net::Client& client = Session();
+    switch (client.GetStatus()) {
+        case net::Status::Connected:
+            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Online (#%u)", client.GetPlayerId());
+            break;
+        case net::Status::Connecting: {
+            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.3f, 1.0f), "Connecting...");
+            std::string error = client.GetError();
+            if (!error.empty()) ImGui::TextDisabled("%s", error.c_str());
+            break;
+        }
+        case net::Status::Error:
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Error: %s", client.GetError().c_str());
+            return;
+        case net::Status::Stopped:
+            ImGui::TextDisabled("Offline");
+            return;
+    }
+
+    auto players = client.Players();
+    if (players.empty()) {
+        ImGui::TextDisabled("No other players");
+        return;
+    }
+    for (const auto& p : players) {
+        if (me) {
+            float dx = p.pos[0] - me->x, dy = p.pos[1] - me->y, dz = p.pos[2] - me->z;
+            ImGui::Text("%-16s %7.1f m", p.name.c_str(), std::sqrt(dx * dx + dy * dy + dz * dz));
+        } else {
+            ImGui::Text("%s", p.name.c_str());
+        }
+    }
+}
+
 void DrawOverlay() {
     ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_FirstUseEver);
     ImGui::Begin("MECMM", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing);
 
     Vec3 pos;
-    if (GetPlayerPosition(pos)) {
+    bool havePos = GetPlayerPosition(pos);
+    if (havePos) {
         ImGui::Text("X: %8.2f", pos.x);
         ImGui::Text("Y: %8.2f", pos.y);
         ImGui::Text("Z: %8.2f", pos.z);
     } else {
         ImGui::TextDisabled("Faith position: unavailable");
     }
+    ImGui::Separator();
+    DrawNetwork(havePos ? &pos : nullptr);
     ImGui::Separator();
     ImGui::TextDisabled("Insert: show/hide");
     ImGui::End();

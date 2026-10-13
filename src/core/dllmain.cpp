@@ -1,6 +1,7 @@
 #include <windows.h>
 
 #include "core/log.h"
+#include "core/session.h"
 #include "overlay/overlay.h"
 
 namespace {
@@ -12,11 +13,12 @@ DWORD WINAPI InitThread(LPVOID) {
     while (!GetModuleHandleW(L"d3d11.dll")) Sleep(100);
     Sleep(1000);
 
-    if (InstallOverlay()) {
-        Log("init: done");
-    } else {
+    if (!InstallOverlay()) {
         Log("init: overlay failed, mod is inactive");
+        return 0;
     }
+    StartSession();
+    Log("init: done");
     return 0;
 }
 

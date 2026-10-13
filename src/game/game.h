@@ -7,3 +7,6 @@ struct Vec3 {
 // Faith's world position (Y is up). Returns false if the game data is not available
 // (loading screen, main menu, or the pointer path is wrong for this version).
 bool GetPlayerPosition(Vec3& out);
+
+// Faith's heading in radians around the Y axis (0 = facing +Z). Same availability as above.
+bool GetPlayerYaw(float& out);

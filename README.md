@@ -6,8 +6,9 @@ An unofficial, work-in-progress multiplayer mod for **Mirror's Edge Catalyst** (
 The goal: see other runners in your game in real time — race them, free-run together, play tag.
 
 > [!WARNING]
-> Early development. There is **no multiplayer yet** — the mod currently shows the player's
-> live position in an in-game overlay. See [Roadmap](#roadmap).
+> Early development. Players can already connect to a relay server and see each other in the
+> overlay **as a list with distances** — remote players are not drawn in the world yet.
+> See [Roadmap](#roadmap).
 
 ## Status
 
@@ -16,8 +17,8 @@ The goal: see other runners in your game in real time — race them, free-run to
 | Find the player's position in memory (restart-stable) | ✅ Done |
 | Mod DLL loads into the game (`dinput8.dll` proxy) | ✅ Done |
 | In-game overlay (ImGui) with live coordinates | ✅ Done |
-| Networking: relay server + client in the mod | ⏳ Next |
-| Remote players drawn as markers ("ghosts") | 🔜 Planned |
+| Networking: relay server + client in the mod + test bot | ✅ Done |
+| Remote players drawn as markers ("ghosts") | ⏳ Next |
 | Remote players as 3D characters with animations | 🔜 Planned |
 | Game modes: races, co-op free-run, tag | 🔜 Planned |
 
@@ -53,8 +54,29 @@ cd MECMM
 scripts\build.bat
 ```
 
-The result is `build\Release\dinput8.dll`. Dependencies (ImGui, MinHook) are git submodules
-and are fetched automatically.
+The result is in `build\Release\`: `dinput8.dll` (the mod), `mecmm-server.exe` (relay server),
+`mecmm-bot.exe` (test bot). Dependencies (ImGui, MinHook) are git submodules and are fetched
+automatically.
+
+## Playing together
+
+One person runs the relay server; everyone (including the host) connects to it from the game.
+
+1. **Host:** run `scripts\run-server.bat`. It listens on UDP port **47777**.
+   For players outside your local network, allow the server in Windows Firewall and forward
+   UDP port 47777 on your router.
+2. **Everyone:** after the first launch the mod creates `mecmm.ini` in the game folder:
+   ```ini
+   [net]
+   server=127.0.0.1   ; the host's IP address (127.0.0.1 = this computer)
+   port=47777
+   name=Runner        ; your nickname
+   ```
+   Edit it and restart the game.
+3. In the game, the MECMM window shows **Online** and the list of other players with distances.
+
+**Testing alone:** run `scripts\run-server.bat` and `scripts\run-bot.bat`, then start the game.
+The bot joins as a second player and runs in circles 5 m around you.
 
 ## How it works
 
@@ -65,19 +87,26 @@ and are fetched automatically.
 3. The player's position is read through a pointer path found by reverse engineering:
    `[MirrorsEdgeCatalyst.exe + 0x23DA020] + 0x730`. Details in
    [docs/research/findings.md](docs/research/findings.md).
+4. A network thread sends the player's position and heading to the relay server 30 times per
+   second over UDP. The server forwards every player's state to all others and drops players
+   that are silent for 5 seconds. The wire format is in [src/net/protocol.h](src/net/protocol.h).
 
 ## Project structure
 
 ```
 MECMM/
 ├── src/                    mod source code (C++20), built into dinput8.dll
-│   ├── core/               entry point, dinput8 proxy, logging
-│   ├── game/               access to game data (player position)
+│   ├── core/               entry point, dinput8 proxy, config (mecmm.ini), network session, logging
+│   ├── game/               access to game data (player position and heading)
+│   ├── net/                wire protocol + UDP client (shared with server and bot)
 │   └── overlay/            D3D11 Present hook + ImGui UI
+├── server/                 standalone programs
+│   ├── relay/              mecmm-server.exe — relay server
+│   └── bot/                mecmm-bot.exe — test bot that circles around a player
 ├── external/               third-party libraries (git submodules)
 │   ├── imgui/              Dear ImGui v1.91.5
 │   └── minhook/            MinHook v1.3.3
-├── scripts/                build.bat, install.bat, uninstall.bat
+├── scripts/                build, install/uninstall, run-server, run-bot
 ├── tools/                  reverse-engineering tools (PowerShell)
 │   ├── memory/             memory scanners, pointer finder, position viewer
 │   ├── disasm/             disassembler for live (decrypted) game code
@@ -107,8 +136,9 @@ All tools read the running game's memory and need no extra installs.
 - [x] ImGui overlay with live coordinates
 - [ ] Verify the pointer path in the open world
 - [ ] Player rotation and camera (view matrix) for drawing remote players
-- [ ] UDP relay server + client (send/receive positions 20–30 times per second, interpolation)
-- [ ] Test bot that simulates a remote player
+- [x] UDP relay server + client (30 state updates per second)
+- [x] Test bot that simulates a remote player
+- [ ] Interpolation of remote players (smooth movement)
 - [ ] Remote players drawn as on-screen markers
 - [ ] Remote players as in-world characters, then animations
 - [ ] Game modes: races on time-trial routes, co-op free-run, tag
