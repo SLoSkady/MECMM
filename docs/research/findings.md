@@ -79,6 +79,32 @@ Found by hooking `ID3D11DeviceContext::OMSetRenderTargets` (vtable 33) and
   3D figures (`depth = 0.06 / view distance`, larger = closer).
 - `screenshots/depth3.png` shows the picked buffer in the debug window.
 
+## Replay / ghost system (for animated remote players)
+
+Type names in the `.exe` (found with `tools/memory/strscan.ps1`; the game's internal codename is **Pam**):
+
+- Recording and playback: `PamReplayRecordingComponent(Data)`, `PamClientReplayEntity`,
+  `PamReplayPlayerComponent(Data)`, `PamReplayEntityData`, `PamReplayAsset`, `PamReplayResource`,
+  messages `PamReplayRecordingStarted/Stopped`, `PamReplayStartPreview`, `PamReplayReplayDone`.
+- Data format: `NetworkReplayKeyframe`, `NetworkReplayTrackData`.
+- Visuals: `PamUseRunnersGhostShader`, `PamGhostInRvColorBurnPass`, prefabs `PF_Replay`,
+  `PF_ReplayMarker`, `PF_SkillReplayMarkerWithAutoPlay`.
+- Online part (dead since the server shutdown): `PamGatewayBackendGetPlayerGhostsRequestMessage`,
+  `...SetPlayerGhostRequestMessage`, `...DownloadReplayRequestMessage`, `getPlayerGhosts`, `setPlayerGhost`.
+
+Starting a **time trial** loads (strings appear in memory that are absent in free roam):
+`UI_Faith3p_Idle_Replay` (third-person Faith animation for replays), `SpawnTemplate_Projection_Replay`,
+`ReplayMarker`, `ReplayStartLocations`, `setPlayerGhost`, `ReplayUnavailable`.
+
+Interpretation: the game records the run, tries to upload it and downloads other players' ghosts
+from EA's backend; with the backend gone no ghost is shown, but the playback system, Faith's
+third-person model/animations and the ghost shader are all present. Plan: feed the replay
+playback with our own data (first a recorded run, then live network state).
+
+Frostbite's own network replication also exists (`GhostManager`, `ServerGhostManager`,
+`SinglePlayerTimeNudgeGhostFrequencyFactor`; "ghost" = replicated network object), the engine
+runs as client + server even in single player.
+
 ## Dead ends (so nobody repeats them)
 
 - Searching the "height" with Cheat Engine finds values around 35.4 that react to climbing.

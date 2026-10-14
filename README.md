@@ -39,7 +39,8 @@ The goal: see other runners in your game in real time — race them, free-run to
    ```
    (without an argument the script uses `E:\SteamLibrary\steamapps\common\Mirrors Edge Catalyst`)
 3. Start the game. A small **MECMM** window appears in the top-left corner.
-   **Insert** shows/hides it.
+   **F7** shows/hides it, **F8** opens the depth debug window. Keys can be changed in `mecmm.ini`
+   (`[keys] menu=F7`, `debug=F8`; names like `F1`..`F12`, `Home`, `End`, `PageUp`, `K`, `5`).
 
 To remove the mod, close the game and run `scripts\uninstall.bat` — the game is back to vanilla.
 
@@ -73,6 +74,9 @@ One person runs the relay server; everyone (including the host) connects to it f
    server=127.0.0.1   ; the host's IP address (127.0.0.1 = this computer)
    port=47777
    name=Runner        ; your nickname
+   [keys]
+   menu=F7            ; show/hide the MECMM window
+   debug=F8           ; depth debug window
    ```
    Edit it and restart the game.
 3. In the game, the MECMM window shows **Online** and the list of other players with distances.
@@ -135,7 +139,8 @@ All tools read the running game's memory and need no extra installs.
 | `tools/memory/ptrfind.ps1` | Find pointers to an object; marks static ones inside the `.exe` |
 | `tools/memory/ptrchain.ps1` | Multi-level pointer search back to static `.exe` locations (like CE's pointer scan) |
 | `tools/memory/matscan.ps1` | Find 4x4 transform matrices near a point and filter them by rotation |
-| In game: **F8** or **Home** | Debug window with the depth buffers the game uses (PgUp/PgDn to browse) |
+| `tools/memory/strscan.ps1` | Find strings (engine type names, asset names) in the game's memory |
+| In game: **F8** | Debug window with the depth buffers the game uses (PgUp/PgDn to browse) |
 | `tools/disasm/disasm.ps1` | Disassemble live game code around an address |
 
 ## Roadmap
@@ -151,7 +156,8 @@ All tools read the running game's memory and need no extra installs.
 - [x] Remote players drawn as on-screen markers
 - [ ] Check markers at other resolutions / aspect ratios (16:9)
 - [x] Remote players as simple 3D figures occluded by the scene (game's depth buffer)
-- [ ] Remote players as the real game character, then animations
+- [ ] SDK dumper: read Frostbite's runtime type info (class and field layouts) from the game
+- [ ] Remote players through the game's own replay/ghost system (third-person Faith, animations)
 - [ ] Game modes: races on time-trial routes, co-op free-run, tag
 - [ ] Auto-fix for the endless loading screen (offline mode)
 

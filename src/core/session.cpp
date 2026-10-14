@@ -12,7 +12,7 @@ namespace {
 net::Client g_client;
 
 DWORD WINAPI SessionThread(LPVOID) {
-    Config config = LoadConfig();
+    const Config& config = GetConfig();
     if (!g_client.Start(config.server, config.port, config.name)) {
         Log("session: %s", g_client.GetError().c_str());
         return 0;

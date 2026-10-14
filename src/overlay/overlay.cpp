@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+#include "core/config.h"
 #include "core/log.h"
 #include "core/session.h"
 #include "game/game.h"
@@ -206,7 +207,9 @@ void DrawOverlay() {
     ImGui::Separator();
     DrawNetwork(havePos ? &pos : nullptr);
     ImGui::Separator();
-    ImGui::TextDisabled("Insert: show/hide   F8 or Home: depth debug");
+    const Config& config = GetConfig();
+    ImGui::TextDisabled("%s: show/hide   %s: depth debug", KeyName(config.keyMenu).c_str(),
+                        KeyName(config.keyDebug).c_str());
     ImGui::End();
 }
 
@@ -300,8 +303,9 @@ HRESULT STDMETHODCALLTYPE HookedPresent(IDXGISwapChain* swapChain, UINT syncInte
     depth::EndFrame();  // everything the game drew this frame has been submitted
     if (!g_imguiReady) g_imguiReady = InitImGui(swapChain);
 
-    if (KeyPressed(VK_INSERT)) g_visible = !g_visible;
-    if (KeyPressed(VK_F8) || KeyPressed(VK_HOME)) g_depthDebug = !g_depthDebug;
+    const Config& config = GetConfig();
+    if (KeyPressed(config.keyMenu)) g_visible = !g_visible;
+    if (KeyPressed(config.keyDebug)) g_depthDebug = !g_depthDebug;
     if (g_depthDebug && KeyPressed(VK_NEXT)) ++g_depthPick;
     if (g_depthDebug && KeyPressed(VK_PRIOR)) g_depthPick = std::max(g_depthPick - 1, -1);
     LogDepthCandidates();
