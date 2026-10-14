@@ -5,6 +5,9 @@
 *.cmd text eol=crlf
 *.ps1 text eol=crlf
 
+# Headers are C++ (GitHub guesses some of them as C)
+*.h linguist-language=C++
+
 # Binary files
 *.png binary
 *.dll binary
