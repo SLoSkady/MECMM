@@ -2,10 +2,12 @@
 # stored by the engine) or a 64-bit value (e.g. a pointer).
 #   findbytes.ps1 -String PamClientReplayEntity
 #   findbytes.ps1 -Pointer 1424A3B10            # 8-byte little-endian, 8-aligned
+#   findbytes.ps1 -UInt32 0x2734a476 -ImageOnly # 4-byte value, any alignment (e.g. an immediate in code)
 #   add -ImageOnly to search only inside the .exe image
 param(
     [string]$String,
     [string]$Pointer,
+    [string]$UInt32,
     [switch]$ImageOnly,
     [int]$Max = 50,
     [string]$Process = "MirrorsEdgeCatalyst"
@@ -60,6 +62,9 @@ if ($ImageOnly) { $lo = $modBase; $hi = $modEnd }
 
 if ($String) {
     $needle = [Text.Encoding]::ASCII.GetBytes($String) + [byte[]](0)
+    $hits = [Bytes]::Find($h, $lo, $hi, $needle, 1, $Max)
+} elseif ($UInt32) {
+    $needle = [BitConverter]::GetBytes([Convert]::ToUInt32($UInt32.Replace("0x", ""), 16))
     $hits = [Bytes]::Find($h, $lo, $hi, $needle, 1, $Max)
 } else {
     $needle = [BitConverter]::GetBytes([Convert]::ToInt64($Pointer, 16))

@@ -118,6 +118,28 @@ Runtime classes: `PamClientReplayPlayerComponent` (0x310), `PamClientReplayRecor
 Sending bone poses over the network and feeding them to a replay player would show the real
 movement of remote players (vaults, rolls, arms), not just a position.
 
+### Blueprints (Frosty Editor → EBX to XML)
+
+Asset names come from Frosty's cache; relevant ones:
+`Gameplay/Movement/PF_Replay`, `Gameplay/Social/PF_SkillReplayMarkerWithAutoPlay`,
+`Characters/SpawnTemplates/Projection/SpawnTemplate_Projection_Replay`,
+`Characters/Projection/ProjectionCharacter`, `Characters/Projection/FX_SS_Projection_Ghost`,
+`FX/UX/ProjectionMesh/FX_UX_ProjectionMesh_Trail_M`, and ghost colours
+`Characters/Customizations/Projection/Ghost/Customizations/Customization_Projection_Ghost_{Black,Blue,Green,Orange,Red,Teal,Yellow}`.
+
+- The ghost is a **character** spawned by a `CharacterSpawnReferenceObjectData` with blueprint
+  `Characters/Projection/ProjectionCharacter` and template `SpawnTemplate_Projection_Replay`
+  (customization `Customization_Projection_RunVis`, Team2, max 1 at a time, no auto spawn).
+- `PF_Replay` wiring (ids decoded with `tools/sdk/fbhash.ps1`, hash = djb2-xor: `h=5381; h=h*33^c`):
+  ```
+  CharacterSpawnReference --OnSpawned--> PamReplayEntity          (character ready)
+  (interface) --StartReplay / StopReplay--> PamReplayEntity
+  input triggers --StartPreview / StopPreview--> PamReplayEntity
+  PamReplayEntity --OnReplayDone--> delay / interface
+  interface exposes ControllableTransform, Visible, TimeScale of the spawned character
+  ```
+- So playback is started by sending the **`StartReplay` event (0x2734a476)** to the replay entity.
+
 ### Live objects (free roam, `tools/sdk/instances.ps1` + `inspect.ps1`)
 
 GetType() is **vtable slot 0** and is always `lea rax,[rip+TypeInfo]; ret` — that is how

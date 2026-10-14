@@ -145,6 +145,7 @@ All tools read the running game's memory and need no extra installs.
 | `tools/sdk/sdkdump.ps1` | **SDK dumper**: all ~10 000 engine classes, structs and enums with fields and offsets → `tools/output/sdk/` |
 | `tools/sdk/instances.ps1` | Find live objects of an engine class (e.g. `-Class PamClientReplayPlayerComponent`) |
 | `tools/sdk/inspect.ps1` | Show a live object with pointers resolved to class names |
+| `tools/sdk/fbhash.ps1` | Decode Frostbite name hashes (event / field ids in blueprints) using all SDK names |
 | In game: **F8** | Debug window with the depth buffers the game uses (PgUp/PgDn to browse) |
 | `tools/disasm/disasm.ps1` | Disassemble live game code around an address |
 
