@@ -99,11 +99,9 @@ MECMM/
 
 ## How this was made
 
-Built over a few evenings by SLoSkady together with an AI coding assistant (Claude, via Claude Code).
-SLoSkady directed the project, chose the approach at each step, did all in-game research and testing
-(memory searches, Cheat Engine, Frosty Editor exports, screenshots) and reviewed the results; most of
-the code was written by the assistant from that direction. The notes describe each step, including
-the dead ends.
+Developed by SLoSkady using AI tools (Claude Code) and reverse-engineering tools (Cheat Engine,
+Frosty Editor): research of the game, task definition, choice of approach, testing and documentation.
+Every step, including the dead ends, is described in the [notes](docs/research/README.md).
 
 ## Related work
 
