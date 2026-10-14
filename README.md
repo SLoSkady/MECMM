@@ -119,6 +119,7 @@ MECMM/
 ├── scripts/                build, install/uninstall, run-server, run-bot
 ├── tools/                  reverse-engineering tools (PowerShell)
 │   ├── memory/             memory scanners, pointer finder, position viewer
+│   ├── sdk/                SDK dumper (engine type information → text files)
 │   ├── disasm/             disassembler for live (decrypted) game code
 │   ├── lib/                Iced disassembler library
 │   └── output/             raw scan data (not committed)
@@ -140,6 +141,8 @@ All tools read the running game's memory and need no extra installs.
 | `tools/memory/ptrchain.ps1` | Multi-level pointer search back to static `.exe` locations (like CE's pointer scan) |
 | `tools/memory/matscan.ps1` | Find 4x4 transform matrices near a point and filter them by rotation |
 | `tools/memory/strscan.ps1` | Find strings (engine type names, asset names) in the game's memory |
+| `tools/memory/findbytes.ps1` | Find an exact string or pointer value in the game's memory |
+| `tools/sdk/sdkdump.ps1` | **SDK dumper**: all ~10 000 engine classes, structs and enums with fields and offsets → `tools/output/sdk/` |
 | In game: **F8** | Debug window with the depth buffers the game uses (PgUp/PgDn to browse) |
 | `tools/disasm/disasm.ps1` | Disassemble live game code around an address |
 

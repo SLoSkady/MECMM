@@ -79,7 +79,44 @@ Found by hooking `ID3D11DeviceContext::OMSetRenderTargets` (vtable 33) and
   3D figures (`depth = 0.06 / view distance`, larger = closer).
 - `screenshots/depth3.png` shows the picked buffer in the debug window.
 
+## Runtime type information (SDK)
+
+Frostbite keeps a description of every engine type in the `.exe`. `tools/sdk/sdkdump.ps1` reads it
+from the running game and writes `classes.txt`, `valuetypes.txt`, `enums.txt`, `index.csv`
+(~10 000 types) into `tools/output/sdk/` (generated locally, not committed).
+
+```
+TypeInfo   +0x00 info*  +0x08 next TypeInfo* (one global linked list, ~10k entries)
+info       +0x00 name   +0x08 u16 flags (kind = flags >> 4 & 0x1F)  +0x0A u16 size
+           +0x10 module +0x18 u8 alignment  +0x1A u16 field count
+  class    +0x20 super TypeInfo*   +0x30 FieldInfo[]
+  struct   +0x28 FieldInfo[]
+  enum     +0x20 FieldInfo[] (value: u32 at +0x10)
+  array    +0x20 element TypeInfo* (name is empty)
+FieldInfo  0x18 bytes: +0x00 name, +0x08 u16 flags, +0x0A u16 offset, +0x10 TypeInfo*
+```
+
+Kinds: 0 Void, 1 DbObject, 2 ValueType, 3 Class, 4 Array, 6 String, 7 CString, 8 Enum, 9 FileRef,
+10 Boolean, 11–18 Int8..Uint64, 19 Float32, 20 Float64, 21 Guid, 22 SHA1, 23 ResourceRef.
+The game's own module is called **Pamplona** (hence the `Pam` prefix).
+
 ## Replay / ghost system (for animated remote players)
+
+From the SDK: the ghost is a character with a replay **component** that plays back **bone poses**:
+
+```
+class PamReplayPlayerComponentData : GameComponentData      // playback
+    0x70 BoneNameId[] RecordingBones;  0x78 BoneNameId[] TranslationBones;
+    0x80 SkeletonAsset SkeletonAsset;  0x88 Float32 TimeScale;
+class PamReplayRecordingComponentData : GameComponentData   // recording during a run
+    0x70 BoneNameId TrailBone;  0x78 BoneNameId[] RecordingBones;  0x80 BoneNameId[] TranslationBones;
+class NetworkReplayKeyframe : TimelineKeyframeData
+    0x10 Float32 Time; 0x14 Float32 Length; 0x18 StartTrim; 0x1C EndTrim; 0x20 CString CaptureName;
+```
+Runtime classes: `PamClientReplayPlayerComponent` (0x310), `PamClientReplayRecordingComponent` (0xA0),
+`PamClientReplayEntity` (0x58), `PamReplayResource` (0x28).
+Sending bone poses over the network and feeding them to a replay player would show the real
+movement of remote players (vaults, rolls, arms), not just a position.
 
 Type names in the `.exe` (found with `tools/memory/strscan.ps1`; the game's internal codename is **Pam**):
 
