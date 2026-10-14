@@ -118,6 +118,24 @@ Runtime classes: `PamClientReplayPlayerComponent` (0x310), `PamClientReplayRecor
 Sending bone poses over the network and feeding them to a replay player would show the real
 movement of remote players (vaults, rolls, arms), not just a position.
 
+### Live objects (free roam, `tools/sdk/instances.ps1` + `inspect.ps1`)
+
+GetType() is **vtable slot 0** and is always `lea rax,[rip+TypeInfo]; ret` — that is how
+`instances.ps1` finds objects of a class and `inspect.ps1` names the class behind any pointer.
+
+In free roam (no time trial) the game already has:
+- 1 `PamClientReplayRecordingComponent` (probably on Faith);
+- 1 `PamClientReplayPlayerComponent`, linked as:
+  ```
+  PamClientReplayEntity (+0x28 PamReplayEntityData, +0x50 PamReplayResource = loaded replay)
+    └ PamClientReplayPlayerComponent (+0x10 PamReplayPlayerComponentData,
+         +0x178 AntAnimatableEntityData, +0x1C8 ClientAntAnimatableEntity, +0x2E8 owner entity)
+          └ ClientAntAnimatableEntity (0x760 bytes) — the animated body
+  ```
+  The body is idle: its stored coordinates (~-1232, 68, -685) are 1.4 km away from Faith and there
+  are no transform matrices around that point, i.e. it is not active/rendered.
+- Next: make the game play a replay (or find what activates it), then move it next to Faith.
+
 Type names in the `.exe` (found with `tools/memory/strscan.ps1`; the game's internal codename is **Pam**):
 
 - Recording and playback: `PamReplayRecordingComponent(Data)`, `PamClientReplayEntity`,
