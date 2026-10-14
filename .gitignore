@@ -29,3 +29,6 @@ tools/output/
 
 # Logs
 *.log
+
+# Third-party tools downloaded locally (not ours to redistribute)
+tools/FrostyEditor/
