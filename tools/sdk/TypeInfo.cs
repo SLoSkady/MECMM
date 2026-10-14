@@ -1,5 +1,5 @@
 // Reads Frostbite's runtime type information (TypeInfo) out of the running game.
-// Used by sdkdump.ps1. Layout (Mirror's Edge Catalyst, found by research, see docs/research/findings.md):
+// Used by sdkdump.ps1. Layout (Mirror's Edge Catalyst, found by research, see docs/research/05-type-info-sdk.md):
 //   TypeInfo   +0x00 info*, +0x08 next TypeInfo* (global linked list)
 //   info       +0x00 const char* name, +0x08 u16 flags (kind = flags >> 4 & 0x1F), +0x0A u16 size,
 //              +0x10 module info*, +0x18 u8 alignment, +0x1A u16 field count

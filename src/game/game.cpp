@@ -6,7 +6,7 @@
 
 namespace {
 
-// Found in research (see docs/research/findings.md):
+// Found in research (see docs/research/02-player-position.md and 03-camera.md):
 //   [MirrorsEdgeCatalyst.exe + 0x23DA020] + 0x700 -> 4x4 transform of the character root
 //   rows: right (+0x00), up (+0x10), forward (+0x20), translation (+0x30)
 constexpr uintptr_t kPlayerObjectPtr = 0x23DA020;

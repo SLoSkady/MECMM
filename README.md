@@ -1,179 +1,124 @@
-# MECMM — Mirror's Edge Catalyst Multiplayer Mod
+# MECMM — reverse engineering Frostbite 3 in Mirror's Edge Catalyst
 
 **English** · [Русский](README.ru.md)
 
-An unofficial, work-in-progress multiplayer mod for **Mirror's Edge Catalyst** (PC, Steam).
-The goal: see other runners in your game in real time — race them, free-run together, play tag.
+A research project that takes apart **Mirror's Edge Catalyst** (PC, Frostbite 3) from the running
+process: where the game keeps the player and the camera, how it renders depth, how the engine
+describes its own classes, and how its runner-ghost system works. The findings are turned into a
+reusable toolkit and a working **proof-of-concept multiplayer mod**: players connect through a small
+relay server and see each other as 3D figures in the city, hidden correctly behind walls.
 
-> [!WARNING]
-> Early development. Players can connect to a relay server and see each other in the world as
-> **simple 3D figures** with name and distance, correctly hidden behind walls (shown as a faint
-> silhouette). The real game character model is not used yet.
-> See [Roadmap](#roadmap).
+<p align="center">
+  <img src="docs/research/screenshots/ghost3.png" width="49%" alt="A remote player behind a box: the hidden part is a silhouette">
+  <img src="docs/research/screenshots/depth3.png" width="49%" alt="The game's scene depth buffer, found through D3D11 hooks">
+</p>
 
-## Status
+## Results
 
-| Stage | State |
+| Area | Result |
 |---|---|
-| Find the player's position in memory (restart-stable) | ✅ Done |
-| Mod DLL loads into the game (`dinput8.dll` proxy) | ✅ Done |
-| In-game overlay (ImGui) with live coordinates | ✅ Done |
-| Networking: relay server + client in the mod + test bot | ✅ Done |
-| Remote players drawn as markers ("ghosts") with smooth movement | ✅ Done |
-| Remote players as simple 3D figures, hidden behind walls (silhouette) | ✅ Done |
-| Remote players as the real game character with animations | 🔜 Planned |
-| Game modes: races, co-op free-run, tag | 🔜 Planned |
+| Player | Restart-proof pointer path to Faith's transform: `[exe+0x23DA020]+0x700` ([notes](docs/research/02-player-position.md)) |
+| Camera | Render view with view and projection matrices: `[exe+0x2563A10]` (+0x630, +0x6F0); world-to-screen math ([notes](docs/research/03-camera.md)) |
+| Rendering | Scene depth buffer found through `ID3D11DeviceContext` hooks; remote players drawn as 3D figures occluded by the scene ([notes](docs/research/04-depth-buffer.md)) |
+| Engine types | **SDK dumper**: reads Frostbite's reflection data, ~10 000 classes/structs/enums with fields and offsets ([notes](docs/research/05-type-info-sdk.md)) |
+| Ghost system | Mapped how the game records and replays runners as animated ghosts (SDK + Frosty blueprints + live objects) ([notes](docs/research/06-replay-ghost-system.md)) |
+| Network | UDP protocol, relay server, interpolation, test bot ([notes](docs/research/07-network.md)) |
 
-## Requirements
+All notes: [docs/research/](docs/research/README.md).
 
-- Windows 10/11 x64
-- Mirror's Edge Catalyst, **Steam** version (other versions are untested)
-- To build: Visual Studio 2022 with **Desktop development with C++** (includes CMake), Git
+## Toolkit
 
-## Installation
+PowerShell + C# tools that work on the running game (no installs; the game must be running).
+Memory is streamed in chunks, so they work where Cheat Engine runs out of memory on this 12 GB process.
 
-1. Build the mod (see [Building](#building)) — or take `dinput8.dll` from a release once available.
-2. **Close the game** and run:
-   ```bat
-   scripts\install.bat "D:\path\to\Mirrors Edge Catalyst"
-   ```
-   (without an argument the script uses `E:\SteamLibrary\steamapps\common\Mirrors Edge Catalyst`)
-3. Start the game. A small **MECMM** window appears in the top-left corner.
-   **F7** shows/hides it, **F8** opens the depth debug window. Keys can be changed in `mecmm.ini`
-   (`[keys] menu=F7`, `debug=F8`; names like `F1`..`F12`, `Home`, `End`, `PageUp`, `K`, `5`).
+| Tool | Purpose |
+|---|---|
+| `tools/sdk/sdkdump.ps1` | **SDK dumper**: all engine classes, structs and enums with fields and offsets → `tools/output/sdk/` |
+| `tools/sdk/instances.ps1` | Find live objects of an engine class (via GetType() in vtable slot 0) |
+| `tools/sdk/inspect.ps1` | Show a live object with every pointer resolved to a class name |
+| `tools/sdk/fbhash.ps1` | Decode Frostbite name hashes (event / field ids in blueprints) |
+| `tools/memory/heightscan.ps1` | Cheat Engine–style value scan (increased / decreased / unchanged) over all memory |
+| `tools/memory/posscan.ps1` | Find x,y,z float triples and filter them by movement |
+| `tools/memory/matscan.ps1` | Find 4x4 transform matrices near a point, filter by rotation |
+| `tools/memory/memwatch.ps1` | Record values to CSV while the game window is focused |
+| `tools/memory/ptrfind.ps1`, `ptrchain.ps1` | One-level and multi-level pointer search back to static `.exe` locations |
+| `tools/memory/strscan.ps1`, `findbytes.ps1` | Find strings, pointers or immediates in memory / code |
+| `tools/memory/showpos.ps1` | Print the player's position through the found pointer path |
+| `tools/disasm/disasm.ps1` | Disassemble live (decrypted) game code (Iced) |
 
-To remove the mod, close the game and run `scripts\uninstall.bat` — the game is back to vanilla.
+## Proof-of-concept mod
 
-> [!NOTE]
-> EA shut down the game's online servers in December 2023. If the game hangs on an endless
-> loading screen after the intro, start it with the internet **disconnected**, then reconnect
-> once you are in the game.
+A `dinput8.dll` loaded by the game ([how](docs/research/01-loading-and-overlay.md)) with:
+- an ImGui overlay: own position, connection status, players and distances (**F7**), depth debug (**F8**);
+- networking: position and heading 30×/s to a relay server, interpolated remote players;
+- remote players as 3D figures (body, head, "nose" for the heading, colour per player), occluded by
+  the scene and shown as a silhouette behind walls.
 
-## Building
+It is a demonstrator, not a finished mod: no animations, no collision, no menu. For a complete
+multiplayer mod built on the game's own ghost characters see [MECMP](#related-work).
+
+### Build and run
+
+Requirements: Windows 10/11 x64, Mirror's Edge Catalyst (Steam), Visual Studio 2022 with *Desktop
+development with C++*, Git.
 
 ```bat
 git clone --recursive https://github.com/SLoSkady/MECMM.git
 cd MECMM
-scripts\build.bat
+scripts\build.bat                      :: build\Release\dinput8.dll, mecmm-server.exe, mecmm-bot.exe
+scripts\install.bat "D:\path\to\Mirrors Edge Catalyst"     :: game closed
+scripts\run-server.bat                 :: relay server, UDP 47777
+scripts\run-bot.bat                    :: optional: a bot that circles around you
 ```
 
-The result is in `build\Release\`: `dinput8.dll` (the mod), `mecmm-server.exe` (relay server),
-`mecmm-bot.exe` (test bot). Dependencies (ImGui, MinHook) are git submodules and are fetched
-automatically.
-
-## Playing together
-
-One person runs the relay server; everyone (including the host) connects to it from the game.
-
-1. **Host:** run `scripts\run-server.bat`. It listens on UDP port **47777**.
-   For players outside your local network, allow the server in Windows Firewall and forward
-   UDP port 47777 on your router.
-2. **Everyone:** after the first launch the mod creates `mecmm.ini` in the game folder:
-   ```ini
-   [net]
-   server=127.0.0.1   ; the host's IP address (127.0.0.1 = this computer)
-   port=47777
-   name=Runner        ; your nickname
-   [keys]
-   menu=F7            ; show/hide the MECMM window
-   debug=F8           ; depth debug window
-   ```
-   Edit it and restart the game.
-3. In the game, the MECMM window shows **Online** and the list of other players with distances.
-
-**Testing alone:** run `scripts\run-server.bat` and `scripts\run-bot.bat`, then start the game.
-The bot joins as a second player and runs in circles 5 m around you.
-
-## How it works
-
-1. The game loads `dinput8.dll` from its own folder. Ours forwards every DirectInput call to
-   the real system `dinput8.dll`, so input keeps working, and starts the mod on a separate thread.
-2. The mod hooks `IDXGISwapChain::Present` (MinHook) and draws its UI with Dear ImGui on top of
-   every frame.
-3. The player's position is read through a pointer path found by reverse engineering:
-   `[MirrorsEdgeCatalyst.exe + 0x23DA020] + 0x730`. Details in
-   [docs/research/findings.md](docs/research/findings.md).
-4. A network thread sends the player's position and heading to the relay server 30 times per
-   second over UDP. The server forwards every player's state to all others and drops players
-   that are silent for 5 seconds. The wire format is in [src/net/protocol.h](src/net/protocol.h).
-5. Remote players are drawn 100 ms in the past, interpolated between received states, and
-   projected to the screen with the game's own camera matrices
-   (`[MirrorsEdgeCatalyst.exe + 0x2563A10]`: view `+0x630`, projection `+0x6F0`).
+Start the game **with the internet disconnected** (EA's servers are gone; online the game hangs after
+the intro), reconnect once in game. The mod creates `mecmm.ini` next to the game: server address,
+port, nickname, hotkeys. `scripts\uninstall.bat` restores the vanilla game.
 
 ## Project structure
 
 ```
 MECMM/
-├── src/                    mod source code (C++20), built into dinput8.dll
-│   ├── core/               entry point, dinput8 proxy, config (mecmm.ini), network session, logging
-│   ├── game/               access to game data (player position and heading)
+├── src/                    proof-of-concept mod (C++20) → dinput8.dll
+│   ├── core/               entry point, dinput8 proxy, config, network session, logging
+│   ├── game/               game data: player position and heading, camera, world-to-screen
 │   ├── net/                wire protocol + UDP client (shared with server and bot)
 │   ├── overlay/            D3D11 Present hook + ImGui UI
 │   └── render/             scene depth discovery, 3D figures of remote players
-├── server/                 standalone programs
-│   ├── relay/              mecmm-server.exe — relay server
-│   └── bot/                mecmm-bot.exe — test bot that circles around a player
-├── external/               third-party libraries (git submodules)
-│   ├── imgui/              Dear ImGui v1.91.5
-│   └── minhook/            MinHook v1.3.3
-├── scripts/                build, install/uninstall, run-server, run-bot
-├── tools/                  reverse-engineering tools (PowerShell)
-│   ├── memory/             memory scanners, pointer finder, position viewer
-│   ├── sdk/                SDK dumper (engine type information → text files)
-│   ├── disasm/             disassembler for live (decrypted) game code
+├── server/                 relay/ (mecmm-server.exe), bot/ (mecmm-bot.exe)
+├── tools/                  research toolkit
+│   ├── memory/             memory scanners, pointer search, viewers
+│   ├── sdk/                SDK dumper, live object finder/inspector, hash decoder
+│   ├── disasm/             disassembler for live game code
 │   ├── lib/                Iced disassembler library
-│   └── output/             raw scan data (not committed)
-└── docs/
-    └── research/           findings, Cheat Engine tables, screenshots
+│   └── output/             generated data (scans, SDK dump; not committed)
+├── docs/research/          research notes (7 chapters), screenshots, Cheat Engine table
+├── scripts/                build, install / uninstall, run server / bot
+└── external/               Dear ImGui, MinHook (git submodules)
 ```
 
-## Research tools
+## How this was made
 
-All tools read the running game's memory and need no extra installs.
+Built over a few evenings by SLoSkady together with an AI coding assistant (Claude, via Claude Code).
+SLoSkady directed the project, chose the approach at each step, did all in-game research and testing
+(memory searches, Cheat Engine, Frosty Editor exports, screenshots) and reviewed the results; most of
+the code was written by the assistant from that direction. The notes describe each step, including
+the dead ends.
 
-| Tool | Purpose |
-|---|---|
-| `tools/memory/showpos.ps1` | Print the player's position via the known pointer path (`-Watch` for live) |
-| `tools/memory/heightscan.ps1` | Cheat Engine–style value scan (increased / decreased / unchanged) over **all** memory, streaming — works where CE runs out of memory |
-| `tools/memory/posscan.ps1` | Find x,y,z float triples and filter them by movement |
-| `tools/memory/memwatch.ps1` | Record values to CSV while the game window is focused |
-| `tools/memory/ptrfind.ps1` | Find pointers to an object; marks static ones inside the `.exe` |
-| `tools/memory/ptrchain.ps1` | Multi-level pointer search back to static `.exe` locations (like CE's pointer scan) |
-| `tools/memory/matscan.ps1` | Find 4x4 transform matrices near a point and filter them by rotation |
-| `tools/memory/strscan.ps1` | Find strings (engine type names, asset names) in the game's memory |
-| `tools/memory/findbytes.ps1` | Find an exact string or pointer value in the game's memory |
-| `tools/sdk/sdkdump.ps1` | **SDK dumper**: all ~10 000 engine classes, structs and enums with fields and offsets → `tools/output/sdk/` |
-| `tools/sdk/instances.ps1` | Find live objects of an engine class (e.g. `-Class PamClientReplayPlayerComponent`) |
-| `tools/sdk/inspect.ps1` | Show a live object with pointers resolved to class names |
-| `tools/sdk/fbhash.ps1` | Decode Frostbite name hashes (event / field ids in blueprints) using all SDK names |
-| In game: **F8** | Debug window with the depth buffers the game uses (PgUp/PgDn to browse) |
-| `tools/disasm/disasm.ps1` | Disassemble live game code around an address |
+## Related work
 
-## Roadmap
-
-- [x] Locate the player's position (restart-stable pointer path)
-- [x] `dinput8.dll` proxy loader
-- [x] ImGui overlay with live coordinates
-- [x] Verify the pointer paths in the open world
-- [x] Player heading and the render camera (view + projection matrices)
-- [x] UDP relay server + client (30 state updates per second)
-- [x] Test bot that simulates a remote player
-- [x] Interpolation of remote players (smooth movement)
-- [x] Remote players drawn as on-screen markers
-- [ ] Check markers at other resolutions / aspect ratios (16:9)
-- [x] Remote players as simple 3D figures occluded by the scene (game's depth buffer)
-- [ ] SDK dumper: read Frostbite's runtime type info (class and field layouts) from the game
-- [ ] Remote players through the game's own replay/ghost system (third-person Faith, animations)
-- [ ] Game modes: races on time-trial routes, co-op free-run, tag
-- [ ] Auto-fix for the endless loading screen (offline mode)
+- **[MECMP](https://github.com/CodeNameMeteor/mecmp)** (MIT): an independent, complete multiplayer mod
+  for MEC that shows remote players as animated ghosts using the game's replay system. Our findings
+  on that system ([chapter 6](docs/research/06-replay-ghost-system.md)) were reached independently and
+  agree with its documentation.
+- [Frosty Tool Suite](https://github.com/CadeEvs/FrostyToolsuite): used to read the game's blueprints.
 
 ## Legal
 
-This is an **unofficial, non-commercial fan project**. It is not affiliated with, endorsed by,
-or sponsored by Electronic Arts or DICE. *Mirror's Edge* is a trademark of Electronic Arts Inc.
-
-- The repository contains **no game files or assets** — only original code.
-- The mod requires a **legally purchased copy** of the game and does not bypass its copy protection.
+An **unofficial, non-commercial fan project**, not affiliated with or endorsed by Electronic Arts or
+DICE. *Mirror's Edge* is a trademark of Electronic Arts Inc. The repository contains no game files or
+assets; generated dumps stay local. The tools need a legally purchased copy and do not bypass its
+copy protection.
 
 ## License
 
